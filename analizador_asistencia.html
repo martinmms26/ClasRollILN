@@ -493,7 +493,7 @@ footer span { color: var(--ok); }
   <header>
     <div class="eyebrow">S&I · Instituto Lima Norte · Herramienta interna</div>
     <h1>Analizador de <em>asistencia</em></h1>
-    <p class="subtitle">Sube el archivo <code style="font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--line-soft);padding:1px 5px;border-radius:2px;">Class Roll Report</code> exportado desde LCR. La herramienta detecta qué clases tienen fechas pasadas sin marcar y genera mensajes personalizados para WhatsApp. Todo el procesamiento ocurre en este navegador — ningún dato sale de tu dispositivo.</p>
+    <p class="subtitle">Sube el archivo <code style="font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--line-soft);padding:1px 5px;border-radius:2px;">Class Roll Report</code> exportado desde WISE. La herramienta detecta qué clases tienen fechas pasadas sin marcar y genera mensajes personalizados para WhatsApp. Todo el procesamiento ocurre en este navegador — ningún dato sale de tu dispositivo.</p>
   </header>
 
   <div class="upload-zone" id="dropZone">
@@ -843,7 +843,7 @@ function buildMessage(classObj, signName, signRole) {
   const roleLine = signRole ? `, ${signRole}` : '';
   const intro = `${greet}${roleLine}. Te saludo y espero que estés muy bien.`;
 
-  const body = `Al revisar el registro de asistencia de *${courseLabel}*, noté que ${dateText} aún no ${dates.length === 1 ? 'ha' : 'han'} sido registrada${dates.length === 1 ? '' : 's'} en LCR.`;
+  const body = `Al revisar el registro de asistencia de *${courseLabel}*, noté que ${dateText} aún no ${dates.length === 1 ? 'ha' : 'han'} sido registrada${dates.length === 1 ? '' : 's'} en WISE.`;
 
   const ask = `¿Podrías por favor marcar la asistencia cuando tengas un momento? Eso nos ayuda a mantener actualizados los reportes del Instituto. Si necesitas ayuda con el sistema, con gusto te apoyo.`;
 
@@ -1012,7 +1012,7 @@ async function handleFile(file) {
     document.getElementById('tabs').classList.add('on');
   } catch (e) {
     console.error(e);
-    err.textContent = `No se pudo leer el archivo: ${e.message}. Verifica que sea un archivo .xlsx válido exportado de LCR.`;
+    err.textContent = `No se pudo leer el archivo: ${e.message}. Verifica que sea un archivo .xlsx válido exportado de WISE.`;
     err.classList.add('on');
   } finally {
     proc.classList.remove('on');
