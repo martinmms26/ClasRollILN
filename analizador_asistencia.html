@@ -1,0 +1,1023 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Analizador de Asistencia · Instituto Lima Norte</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #f4f1ea;
+  --bg-card: #fdfbf5;
+  --ink: #1a1a1a;
+  --ink-soft: #4a4a4a;
+  --ink-faded: #8a8a8a;
+  --line: #d9d3c4;
+  --line-soft: #e8e3d5;
+  --accent: #8b2332;
+  --accent-soft: #c4a3a8;
+  --warn: #b8651a;
+  --warn-soft: #f0dcc2;
+  --ok: #3d6b47;
+  --ok-soft: #d4e4d6;
+  --blue: #2d4a7a;
+  --blue-soft: #d4dce8;
+  --shadow: 0 1px 2px rgba(26,26,26,0.04), 0 2px 8px rgba(26,26,26,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, rgba(26,26,26,0.035) 1px, transparent 0);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+.wrap { max-width: 1200px; margin: 0 auto; padding: 48px 32px 80px; position: relative; z-index: 1; }
+header { border-bottom: 1px solid var(--line); padding-bottom: 28px; margin-bottom: 40px; }
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+h1 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 42px;
+  letter-spacing: -0.02em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+h1 em { font-style: italic; font-weight: 400; color: var(--ink-soft); }
+.subtitle { color: var(--ink-soft); font-size: 15px; margin-top: 10px; max-width: 640px; }
+
+/* Upload */
+.upload-zone {
+  background: var(--bg-card);
+  border: 1.5px dashed var(--line);
+  border-radius: 4px;
+  padding: 48px 32px;
+  text-align: center;
+  cursor: pointer;
+  transition: all .2s;
+  margin-bottom: 32px;
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag {
+  border-color: var(--accent);
+  background: #fffdf8;
+}
+.upload-zone.drag { border-style: solid; }
+.upload-ico {
+  width: 48px; height: 48px; margin: 0 auto 16px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--ink-faded);
+}
+.upload-zone h3 {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.upload-zone p { color: var(--ink-soft); font-size: 14px; }
+.upload-zone .fmt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faded);
+  margin-top: 14px;
+  letter-spacing: 0.05em;
+}
+#fileIn { display: none; }
+
+.processing {
+  display: none;
+  padding: 28px; text-align: center;
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  margin-bottom: 32px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+.processing.on { display: block; }
+.spinner {
+  width: 20px; height: 20px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+  vertical-align: middle;
+  margin-right: 10px;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.error {
+  display: none;
+  padding: 16px 20px;
+  background: #fbe8ea;
+  border-left: 3px solid var(--accent);
+  color: var(--accent);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+.error.on { display: block; }
+
+/* Tabs */
+.tabs {
+  display: none;
+  gap: 0;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 32px;
+}
+.tabs.on { display: flex; }
+.tab {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  padding: 14px 22px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--ink-faded);
+  position: relative;
+  transition: color .15s;
+}
+.tab:hover { color: var(--ink-soft); }
+.tab.active { color: var(--ink); }
+.tab.active::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -1px;
+  height: 2px;
+  background: var(--accent);
+}
+.tab-badge {
+  display: inline-block;
+  background: var(--line-soft);
+  color: var(--ink-soft);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 2px;
+  margin-left: 6px;
+  font-weight: 500;
+}
+.tab.active .tab-badge { background: var(--accent); color: white; }
+
+.view { display: none; }
+.view.on { display: block; }
+
+/* Metric cards */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 40px;
+}
+@media (max-width: 720px) { .metrics { grid-template-columns: repeat(2, 1fr); } }
+.metric {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.metric-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--ink-faded);
+  margin-bottom: 10px;
+}
+.metric-value {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 42px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
+.metric-value.warn { color: var(--warn); }
+.metric-value.accent { color: var(--accent); }
+.metric-value.ok { color: var(--ok); }
+.metric-sub {
+  font-size: 12px;
+  color: var(--ink-faded);
+  margin-top: 6px;
+}
+
+/* Section titles */
+.section-title {
+  font-family: 'Fraunces', serif;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: -0.01em;
+  margin-bottom: 6px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.section-sub {
+  color: var(--ink-soft);
+  font-size: 13px;
+  margin-bottom: 20px;
+}
+.section-title .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--ink-faded);
+  font-weight: 400;
+}
+
+/* Class list */
+.class-list { display: flex; flex-direction: column; gap: 12px; }
+.class-card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 18px 22px;
+  box-shadow: var(--shadow);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 16px;
+  align-items: start;
+}
+.class-main { min-width: 0; }
+.class-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faded);
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.class-title {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  line-height: 1.25;
+}
+.class-teacher {
+  font-size: 13px;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+.class-teacher .pill {
+  display: inline-block;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  margin-left: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+}
+.class-dates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.date-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: var(--warn-soft);
+  color: var(--warn);
+  padding: 4px 9px;
+  border-radius: 2px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.class-aside {
+  text-align: right;
+  min-width: 110px;
+}
+.class-aside .n {
+  font-family: 'Fraunces', serif;
+  font-size: 28px;
+  font-weight: 500;
+  color: var(--warn);
+  line-height: 1;
+}
+.class-aside .lbl {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--ink-faded);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-top: 4px;
+}
+
+/* WhatsApp view */
+.wa-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.btn {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 18px;
+  border: 1px solid var(--line);
+  background: var(--bg-card);
+  color: var(--ink);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all .15s;
+  letter-spacing: 0.01em;
+}
+.btn:hover { background: white; border-color: var(--ink-faded); }
+.btn.primary {
+  background: var(--ink);
+  color: var(--bg-card);
+  border-color: var(--ink);
+}
+.btn.primary:hover { background: var(--accent); border-color: var(--accent); color: white; }
+.btn.ghost { background: transparent; }
+.wa-note {
+  font-size: 12px;
+  color: var(--ink-faded);
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.wa-list { display: flex; flex-direction: column; gap: 14px; }
+.wa-card {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+}
+.wa-head {
+  padding: 14px 20px;
+  background: #f9f5eb;
+  border-bottom: 1px solid var(--line-soft);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.wa-head .who {
+  font-family: 'Fraunces', serif;
+  font-size: 17px;
+  font-weight: 500;
+}
+.wa-head .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faded);
+}
+.wa-body {
+  padding: 18px 20px;
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  color: var(--ink);
+  background: var(--bg-card);
+}
+.wa-foot {
+  padding: 10px 20px;
+  border-top: 1px solid var(--line-soft);
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  background: #fbf9f2;
+}
+.wa-foot .btn { padding: 6px 14px; font-size: 12px; }
+.copied { color: var(--ok); font-size: 12px; font-family: 'JetBrains Mono', monospace; margin-right: auto; display: none; align-self: center; }
+.copied.on { display: inline; }
+
+/* Meta info */
+.meta-info {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--blue);
+  padding: 14px 20px;
+  margin-bottom: 24px;
+  font-size: 13px;
+  color: var(--ink-soft);
+  border-radius: 2px;
+}
+.meta-info strong { color: var(--ink); font-weight: 600; }
+.meta-info code {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--line-soft);
+  padding: 1px 5px;
+  border-radius: 2px;
+  font-size: 12px;
+}
+
+.empty {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--ink-faded);
+  font-family: 'Fraunces', serif;
+  font-size: 18px;
+  font-style: italic;
+}
+
+/* Signature input */
+.sig-bar {
+  background: var(--bg-card);
+  border: 1px solid var(--line);
+  padding: 14px 20px;
+  margin-bottom: 20px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.sig-bar label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faded);
+}
+.sig-bar input {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  background: white;
+  border-radius: 2px;
+  flex: 1;
+  min-width: 160px;
+  color: var(--ink);
+}
+.sig-bar input:focus { outline: none; border-color: var(--accent); }
+
+footer {
+  margin-top: 80px;
+  padding-top: 24px;
+  border-top: 1px solid var(--line);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--ink-faded);
+  letter-spacing: 0.05em;
+  text-align: center;
+}
+footer span { color: var(--ok); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="eyebrow">S&I · Instituto Lima Norte · Herramienta interna</div>
+    <h1>Analizador de <em>asistencia</em></h1>
+    <p class="subtitle">Sube el archivo <code style="font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--line-soft);padding:1px 5px;border-radius:2px;">Class Roll Report</code> exportado desde LCR. La herramienta detecta qué clases tienen fechas pasadas sin marcar y genera mensajes personalizados para WhatsApp. Todo el procesamiento ocurre en este navegador — ningún dato sale de tu dispositivo.</p>
+  </header>
+
+  <div class="upload-zone" id="dropZone">
+    <input type="file" id="fileIn" accept=".xlsx,.xls">
+    <div class="upload-ico">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+        <polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/>
+        <polyline points="9 15 12 12 15 15"/>
+      </svg>
+    </div>
+    <h3>Arrastra el archivo aquí o haz clic</h3>
+    <p>Se procesa localmente. Nada se sube a internet.</p>
+    <div class="fmt">.xlsx · .xls</div>
+  </div>
+
+  <div class="processing" id="proc"><span class="spinner"></span>Analizando el archivo…</div>
+  <div class="error" id="err"></div>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-view="report">Informe <span class="tab-badge" id="b1">0</span></button>
+    <button class="tab" data-view="whatsapp">Mensajes WhatsApp <span class="tab-badge" id="b2">0</span></button>
+  </div>
+
+  <!-- INFORME -->
+  <div class="view on" id="view-report">
+    <div class="meta-info" id="metaInfo" style="display:none;"></div>
+
+    <div class="metrics" id="metrics"></div>
+
+    <div class="section-title">
+      Clases con asistencia pendiente
+      <span class="count" id="listCount"></span>
+    </div>
+    <p class="section-sub">Clases en las que al menos una fecha pasada no tiene ninguna marca de asistencia registrada.</p>
+
+    <div class="class-list" id="classList"></div>
+  </div>
+
+  <!-- WHATSAPP -->
+  <div class="view" id="view-whatsapp">
+    <div class="sig-bar">
+      <label>Tu nombre</label>
+      <input type="text" id="signName" value="Martín" placeholder="Martín">
+      <label>Tu rol (opcional)</label>
+      <input type="text" id="signRole" value="" placeholder="Coordinador del Instituto Lima Norte">
+    </div>
+
+    <div class="wa-actions">
+      <button class="btn primary" id="copyAll">Copiar todos los mensajes</button>
+      <button class="btn" id="downloadTxt">Descargar como .txt</button>
+      <span class="wa-note">Toca un mensaje para copiarlo individualmente</span>
+    </div>
+
+    <div class="wa-list" id="waList"></div>
+  </div>
+
+  <footer>
+    Procesamiento local · <span>XLSX.js en el navegador</span> · Sin envío de datos
+  </footer>
+</div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let ANALYSIS = null;
+const MONTHS_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+
+// ============================================================
+// UTILS
+// ============================================================
+function todayAtStart() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+function excelDateToJS(v) {
+  // v puede ser: número (serial Excel), Date, o string
+  if (v instanceof Date) {
+    const d = new Date(v.getFullYear(), v.getMonth(), v.getDate());
+    return d;
+  }
+  if (typeof v === 'number') {
+    // Serial Excel: días desde 1899-12-30
+    const ms = Math.round((v - 25569) * 86400 * 1000);
+    const d = new Date(ms);
+    return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  }
+  if (typeof v === 'string') {
+    // probar dd/mm/yyyy o yyyy-mm-dd
+    const s = v.trim();
+    let m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
+    if (m) {
+      let y = parseInt(m[3]); if (y < 100) y += 2000;
+      return new Date(y, parseInt(m[2]) - 1, parseInt(m[1]));
+    }
+    m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) return new Date(parseInt(m[1]), parseInt(m[2]) - 1, parseInt(m[3]));
+    const parsed = new Date(s);
+    if (!isNaN(parsed)) return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  }
+  return null;
+}
+
+function fmtDate(d) {
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+}
+function fmtDateLong(d) {
+  return `${d.getDate()} de ${MONTHS_ES[d.getMonth()]}`;
+}
+
+function parseClassInfo(text) {
+  // "099R-(PE-Tall)030426 - Ramírez, Carlos - Workshop"
+  if (!text) return { code: '', teacher: '', course: '' };
+  const parts = String(text).split(' - ').map(s => s.trim());
+  return {
+    code: parts[0] || '',
+    teacher: parts[1] || '',
+    course: parts.slice(2).join(' - ') || ''
+  };
+}
+
+function firstName(teacher) {
+  // "Apellido, Nombre" -> primera palabra después de la coma
+  if (!teacher) return '';
+  const idx = teacher.indexOf(',');
+  if (idx === -1) {
+    // No coma — tomar primera palabra como fallback
+    return teacher.split(/\s+/)[0] || teacher;
+  }
+  const after = teacher.slice(idx + 1).trim();
+  const first = after.split(/\s+/)[0] || '';
+  return first;
+}
+
+function isWorkshop(courseText, codeText) {
+  const t = ((courseText || '') + ' ' + (codeText || '')).toLowerCase();
+  return t.includes('workshop') || t.includes('taller');
+}
+
+// ============================================================
+// CORE ANALYSIS
+// ============================================================
+function analyzeWorkbook(wb) {
+  const today = todayAtStart();
+  const classes = [];
+  const teachersWithIssues = new Set();
+  const teachersAll = new Set();
+  let totalSheets = 0;
+  let totalPastDates = 0;
+  let totalUnmarkedDates = 0;
+
+  for (const sheetName of wb.SheetNames) {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) continue;
+    totalSheets++;
+
+    // Leer como arreglo 2D con raw=true para preservar fechas
+    const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+
+    // Row 6 (index 5) -> E = index 4: "código - teacher - course"
+    const infoRaw = rows[5] && rows[5][4];
+    const info = parseClassInfo(infoRaw);
+
+    // Row 7 (index 6): fechas desde col E (index 4) a col AD (index 29)
+    const dateRow = rows[6] || [];
+    const dateCols = []; // array de {col, date}
+    for (let c = 4; c <= 29; c++) {
+      const v = dateRow[c];
+      if (v === null || v === undefined || v === '') continue;
+      // Ignorar encabezado de texto
+      if (typeof v === 'string' && !/\d/.test(v)) continue;
+      const d = excelDateToJS(v);
+      if (d && !isNaN(d)) dateCols.push({ col: c, date: d });
+    }
+
+    // Rows 8+ (index 7+): filas de alumnos
+    const studentRows = [];
+    for (let r = 7; r < rows.length; r++) {
+      const name = rows[r] && rows[r][0];
+      if (name && String(name).trim() !== '') studentRows.push(r);
+    }
+
+    if (info.teacher) teachersAll.add(info.teacher);
+
+    // Determinar si hay fechas pasadas sin marcar
+    const unmarkedPast = [];
+    for (const { col, date } of dateCols) {
+      if (date >= today) continue; // solo pasadas, sin incluir hoy
+      totalPastDates++;
+
+      let anyMark = false;
+      for (const r of studentRows) {
+        const cell = rows[r] && rows[r][col];
+        if (cell !== null && cell !== undefined && String(cell).trim() !== '') {
+          anyMark = true;
+          break;
+        }
+      }
+      if (!anyMark) {
+        unmarkedPast.push(date);
+        totalUnmarkedDates++;
+      }
+    }
+
+    if (unmarkedPast.length > 0 && studentRows.length > 0) {
+      unmarkedPast.sort((a, b) => a - b);
+      classes.push({
+        sheet: sheetName,
+        code: info.code,
+        teacher: info.teacher,
+        firstName: firstName(info.teacher),
+        course: info.course,
+        isWorkshop: isWorkshop(info.course, info.code),
+        totalStudents: studentRows.length,
+        unmarkedDates: unmarkedPast,
+        totalDates: dateCols.length,
+      });
+      if (info.teacher) teachersWithIssues.add(info.teacher);
+    }
+  }
+
+  // Obtener contexto del reporte (periodo, campus)
+  let headerInfo = { campus: '', term: '' };
+  if (wb.SheetNames.length) {
+    const ws0 = wb.Sheets[wb.SheetNames[0]];
+    const rows0 = XLSX.utils.sheet_to_json(ws0, { header: 1, raw: true, defval: null });
+    headerInfo.campus = (rows0[1] && rows0[1][0]) || '';
+    headerInfo.term = (rows0[3] && rows0[3][0]) || '';
+  }
+
+  // Ordenar clases: más fechas sin marcar primero, luego por maestro
+  classes.sort((a, b) => {
+    if (b.unmarkedDates.length !== a.unmarkedDates.length) {
+      return b.unmarkedDates.length - a.unmarkedDates.length;
+    }
+    return a.teacher.localeCompare(b.teacher, 'es');
+  });
+
+  return {
+    totalSheets,
+    totalClasses: classes.length,
+    totalTeachers: teachersAll.size,
+    teachersWithIssues: teachersWithIssues.size,
+    totalPastDates,
+    totalUnmarkedDates,
+    classes,
+    headerInfo,
+    analyzedAt: new Date(),
+  };
+}
+
+// ============================================================
+// RENDER: INFORME
+// ============================================================
+function renderReport(a) {
+  // Meta info
+  const meta = document.getElementById('metaInfo');
+  const today = todayAtStart();
+  meta.style.display = 'block';
+  meta.innerHTML = `
+    <strong>${a.headerInfo.campus || 'Instituto'}</strong> · ${a.headerInfo.term || ''}<br>
+    Análisis generado el <code>${fmtDate(a.analyzedAt)}</code> · Fecha de corte: <code>${fmtDate(today)}</code> (solo fechas anteriores a hoy)
+  `;
+
+  // Metrics
+  const m = document.getElementById('metrics');
+  m.innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Clases analizadas</div>
+      <div class="metric-value">${a.totalSheets}</div>
+      <div class="metric-sub">hojas en el reporte</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Clases con retraso</div>
+      <div class="metric-value warn">${a.totalClasses}</div>
+      <div class="metric-sub">al menos una fecha pasada sin marcar</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Maestros involucrados</div>
+      <div class="metric-value accent">${a.teachersWithIssues}</div>
+      <div class="metric-sub">de ${a.totalTeachers} maestros totales</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Fechas sin marcar</div>
+      <div class="metric-value warn">${a.totalUnmarkedDates}</div>
+      <div class="metric-sub">de ${a.totalPastDates} fechas pasadas</div>
+    </div>
+  `;
+
+  // Badge
+  document.getElementById('b1').textContent = a.totalClasses;
+
+  // List
+  const list = document.getElementById('classList');
+  document.getElementById('listCount').textContent = `— ${a.totalClasses} ${a.totalClasses === 1 ? 'clase' : 'clases'}`;
+
+  if (a.classes.length === 0) {
+    list.innerHTML = `<div class="empty">¡Excelente! Todas las fechas pasadas están marcadas.</div>`;
+    return;
+  }
+
+  list.innerHTML = a.classes.map(c => `
+    <div class="class-card">
+      <div class="class-main">
+        <div class="class-code">${escapeHtml(c.code)}</div>
+        <div class="class-title">${escapeHtml(c.course || 'Sin nombre de curso')}</div>
+        <div class="class-teacher">
+          ${escapeHtml(c.teacher)}
+          ${c.isWorkshop ? '<span class="pill">Taller</span>' : ''}
+        </div>
+        <div class="class-dates">
+          ${c.unmarkedDates.map(d => `<span class="date-chip">${fmtDate(d)}</span>`).join('')}
+        </div>
+      </div>
+      <div class="class-aside">
+        <div class="n">${c.unmarkedDates.length}</div>
+        <div class="lbl">${c.unmarkedDates.length === 1 ? 'fecha' : 'fechas'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// RENDER: WHATSAPP
+// ============================================================
+function buildMessage(classObj, signName, signRole) {
+  const name = classObj.firstName || 'hermano(a)';
+  const dates = classObj.unmarkedDates;
+  const courseLabel = classObj.course || classObj.code || 'tu clase';
+
+  let dateText;
+  if (dates.length === 1) {
+    dateText = `la clase del ${fmtDateLong(dates[0])}`;
+  } else if (dates.length === 2) {
+    dateText = `las clases del ${fmtDateLong(dates[0])} y del ${fmtDateLong(dates[1])}`;
+  } else {
+    const all = dates.map(fmtDateLong);
+    const last = all.pop();
+    dateText = `las clases del ${all.join(', del ')} y del ${last}`;
+  }
+
+  const greet = `Hola, ${name}. Soy ${signName || 'Martín'}`;
+  const roleLine = signRole ? `, ${signRole}` : '';
+  const intro = `${greet}${roleLine}. Te saludo y espero que estés muy bien.`;
+
+  const body = `Al revisar el registro de asistencia de *${courseLabel}*, noté que ${dateText} aún no ${dates.length === 1 ? 'ha' : 'han'} sido registrada${dates.length === 1 ? '' : 's'} en LCR.`;
+
+  const ask = `¿Podrías por favor marcar la asistencia cuando tengas un momento? Eso nos ayuda a mantener actualizados los reportes del Instituto. Si necesitas ayuda con el sistema, con gusto te apoyo.`;
+
+  const close = `¡Muchas gracias por tu servicio! 🙏`;
+
+  return `${intro}\n\n${body}\n\n${ask}\n\n${close}`;
+}
+
+function renderWhatsApp() {
+  const a = ANALYSIS;
+  const signName = document.getElementById('signName').value.trim();
+  const signRole = document.getElementById('signRole').value.trim();
+  const list = document.getElementById('waList');
+
+  document.getElementById('b2').textContent = a.classes.length;
+
+  if (a.classes.length === 0) {
+    list.innerHTML = `<div class="empty">No hay mensajes por generar — todo está al día.</div>`;
+    return;
+  }
+
+  // Agrupar mensajes si un mismo maestro tiene varias clases? Por ahora, un mensaje por clase
+  // (la información de curso es necesaria para que el maestro sepa cuál marcar)
+  list.innerHTML = a.classes.map((c, i) => {
+    const msg = buildMessage(c, signName, signRole);
+    return `
+      <div class="wa-card" data-idx="${i}">
+        <div class="wa-head">
+          <div>
+            <div class="who">Para ${escapeHtml(c.firstName)} · ${escapeHtml(c.teacher)}</div>
+            <div class="meta">${escapeHtml(c.code)} · ${c.unmarkedDates.length} fecha${c.unmarkedDates.length === 1 ? '' : 's'} pendiente${c.unmarkedDates.length === 1 ? '' : 's'}</div>
+          </div>
+        </div>
+        <div class="wa-body" id="body-${i}">${escapeHtml(msg)}</div>
+        <div class="wa-foot">
+          <span class="copied" id="copied-${i}">✓ copiado</span>
+          <button class="btn" onclick="copyMsg(${i})">Copiar</button>
+          <button class="btn primary" onclick="openWhatsApp(${i})">Abrir en WhatsApp</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// ============================================================
+// ACTIONS
+// ============================================================
+window.copyMsg = async function(i) {
+  const body = document.getElementById(`body-${i}`);
+  try {
+    await navigator.clipboard.writeText(body.textContent);
+    const tag = document.getElementById(`copied-${i}`);
+    tag.classList.add('on');
+    setTimeout(() => tag.classList.remove('on'), 1800);
+  } catch (e) {
+    fallbackCopy(body.textContent);
+  }
+};
+
+window.openWhatsApp = function(i) {
+  const body = document.getElementById(`body-${i}`);
+  const text = encodeURIComponent(body.textContent);
+  // wa.me sin número abre la interfaz de selección de contacto
+  window.open(`https://wa.me/?text=${text}`, '_blank');
+};
+
+function fallbackCopy(text) {
+  const ta = document.createElement('textarea');
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand('copy'); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+document.getElementById('copyAll').addEventListener('click', async () => {
+  const signName = document.getElementById('signName').value.trim();
+  const signRole = document.getElementById('signRole').value.trim();
+  const all = ANALYSIS.classes.map(c => {
+    return `=== ${c.teacher} (${c.code}) ===\n${buildMessage(c, signName, signRole)}`;
+  }).join('\n\n\n');
+  try {
+    await navigator.clipboard.writeText(all);
+    const btn = document.getElementById('copyAll');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copiado al portapapeles';
+    setTimeout(() => btn.textContent = orig, 2000);
+  } catch (e) {
+    fallbackCopy(all);
+  }
+});
+
+document.getElementById('downloadTxt').addEventListener('click', () => {
+  const signName = document.getElementById('signName').value.trim();
+  const signRole = document.getElementById('signRole').value.trim();
+  const d = new Date();
+  const stamp = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const txt = `Mensajes de WhatsApp - Asistencia Instituto Lima Norte\nGenerado: ${fmtDate(d)}\nTotal: ${ANALYSIS.classes.length} mensajes\n\n${'='.repeat(60)}\n\n` +
+    ANALYSIS.classes.map(c => {
+      return `Para: ${c.teacher}\nClase: ${c.code} — ${c.course}\nFechas sin marcar: ${c.unmarkedDates.map(fmtDate).join(', ')}\n\n${buildMessage(c, signName, signRole)}\n\n${'-'.repeat(60)}`;
+    }).join('\n\n');
+  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `mensajes_whatsapp_asistencia_${stamp}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+['signName', 'signRole'].forEach(id => {
+  document.getElementById(id).addEventListener('input', () => {
+    if (ANALYSIS) renderWhatsApp();
+  });
+});
+
+// ============================================================
+// TAB SWITCH
+// ============================================================
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('on'));
+    tab.classList.add('active');
+    document.getElementById('view-' + tab.dataset.view).classList.add('on');
+  });
+});
+
+// ============================================================
+// FILE HANDLING
+// ============================================================
+const dz = document.getElementById('dropZone');
+const fi = document.getElementById('fileIn');
+
+dz.addEventListener('click', () => fi.click());
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag'));
+dz.addEventListener('drop', e => {
+  e.preventDefault();
+  dz.classList.remove('drag');
+  if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+});
+fi.addEventListener('change', e => {
+  if (e.target.files.length) handleFile(e.target.files[0]);
+});
+
+async function handleFile(file) {
+  const proc = document.getElementById('proc');
+  const err = document.getElementById('err');
+  err.classList.remove('on'); err.textContent = '';
+  proc.classList.add('on');
+  document.getElementById('tabs').classList.remove('on');
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    ANALYSIS = analyzeWorkbook(wb);
+    renderReport(ANALYSIS);
+    renderWhatsApp();
+    document.getElementById('tabs').classList.add('on');
+  } catch (e) {
+    console.error(e);
+    err.textContent = `No se pudo leer el archivo: ${e.message}. Verifica que sea un archivo .xlsx válido exportado de LCR.`;
+    err.classList.add('on');
+  } finally {
+    proc.classList.remove('on');
+  }
+}
+</script>
+</body>
+</html>
